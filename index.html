@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Джйотиш Наади — генератор гороскопов</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="app-header no-print">
+  <h1 class="font-jaipur">Астрологический разбор · Наади Джйотиш</h1>
+  <p>Генератор персональных гороскопов · Нирайна · Аянамша Лахири · Тамильская традиция Наади</p>
+</header>
+
+<div class="wrap">
+
+  <!-- 1. Астролог -->
+  <section class="card no-print">
+    <h2 class="font-jaipur"><span class="num">1</span>Астролог и разбор</h2>
+    <div class="grid cols-3">
+      <div>
+        <label for="astrologer">Имя астролога</label>
+        <input id="astrologer" type="text" placeholder="Светлана Кройцер" value="Светлана Кройцер">
+      </div>
+      <div>
+        <label for="reportType">Тип гороскопа</label>
+        <select id="reportType">
+          <option>Натальный гороскоп</option>
+          <option>Совместимость (синастрия)</option>
+          <option>Анализ карьеры</option>
+          <option>Анализ отношений</option>
+          <option>Финансовый анализ</option>
+          <option>Духовный анализ</option>
+          <option>Анализ здоровья</option>
+          <option>Детский гороскоп</option>
+          <option>Годовой прогноз</option>
+          <option>Произвольный разбор</option>
+        </select>
+      </div>
+      <div>
+        <label for="reportDate">Дата составления</label>
+        <input id="reportDate" type="date">
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Данные клиента -->
+  <section class="card no-print">
+    <h2 class="font-jaipur"><span class="num">2</span>Данные рождения</h2>
+    <p class="hint">Точные дата, время и место рождения необходимы для расчёта сидерической карты.</p>
+    <div class="grid cols-2">
+      <div>
+        <label for="firstName">Имя</label>
+        <input id="firstName" type="text" placeholder="Имя">
+      </div>
+      <div>
+        <label for="lastName">Фамилия</label>
+        <input id="lastName" type="text" placeholder="Фамилия">
+      </div>
+      <div>
+        <label for="dob">Дата рождения</label>
+        <input id="dob" type="date">
+      </div>
+      <div>
+        <label for="tob">Время рождения</label>
+        <input id="tob" type="time">
+      </div>
+    </div>
+    <div class="grid cols-2" style="margin-top:16px;">
+      <div class="field-autocomplete">
+        <label for="place">Место рождения</label>
+        <input id="place" type="text" autocomplete="off" placeholder="Начните вводить город…">
+        <div id="suggestions" class="suggestions hidden"></div>
+      </div>
+      <div class="grid cols-3" style="gap:10px;">
+        <div>
+          <label for="lat">Широта</label>
+          <input id="lat" type="number" step="0.0001" placeholder="55.7558">
+        </div>
+        <div>
+          <label for="lon">Долгота</label>
+          <input id="lon" type="number" step="0.0001" placeholder="37.6173">
+        </div>
+        <div>
+          <label for="tz">Пояс UTC</label>
+          <input id="tz" type="number" step="0.25" placeholder="3">
+        </div>
+      </div>
+    </div>
+    <div id="birthError" class="error-text"></div>
+  </section>
+
+  <!-- 3. Заметки астролога -->
+  <section class="card no-print">
+    <h2 class="font-jaipur"><span class="num">3</span>Анализ астролога</h2>
+    <p class="hint">Впишите или вставьте свои наблюдения. При генерации текст будет аккуратно
+      структурирован и поданы отдельным блоком, не искажая ваших предсказаний.
+      При наличии ключа и сети доступно улучшение через ИИ.</p>
+    <textarea id="notes" placeholder="Ваши наблюдения по карте…"></textarea>
+    <div class="toolbar" style="margin-top:12px;">
+      <button class="btn btn-ghost" id="btnPolishAI" type="button">✨ Улучшить через ИИ (онлайн)</button>
+      <input id="apiKey" type="password" placeholder="API-ключ Anthropic (необязательно)" style="max-width:320px;">
+      <span class="status-pill" id="aiStatus"></span>
+    </div>
+  </section>
+
+  <!-- 4. Комментарий по упайям -->
+  <section class="card no-print">
+    <h2 class="font-jaipur"><span class="num">4</span>Комментарий астролога по упайям</h2>
+    <p class="hint">Ваши персональные рекомендации по средствам (упайям) — добавятся к автоматически подобранным.</p>
+    <textarea id="remedyNotes" style="min-height:110px;" placeholder="Например: особые практики, посещение храма, обеты…"></textarea>
+  </section>
+
+  <!-- Действия -->
+  <section class="card no-print">
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btnGenerate" type="button">🔮 Рассчитать и сформировать отчёт</button>
+      <button class="btn btn-ghost" id="btnSaveDraft" type="button">💾 Сохранить черновик</button>
+      <button class="btn btn-ghost" id="btnExportJSON" type="button">⬇ Экспорт JSON</button>
+      <button class="btn btn-ghost" id="btnImportJSON" type="button">⬆ Импорт JSON</button>
+      <input id="importFile" type="file" accept="application/json" class="hidden">
+      <span class="spacer"></span>
+      <button class="btn btn-ghost" id="btnUndo" type="button" title="Отменить (Ctrl+Z)">↶</button>
+      <button class="btn btn-ghost" id="btnRedo" type="button" title="Повторить (Ctrl+Y)">↷</button>
+    </div>
+    <p class="status-pill" id="saveStatus" style="margin-top:10px;"></p>
+  </section>
+
+  <!-- Результаты расчёта (на экране) -->
+  <section class="card no-print hidden" id="calcCard">
+    <h2 class="font-jaipur">Гороскоп</h2>
+    <div class="grid cols-2" style="align-items:start;">
+      <div id="chartHolder" class="chart-wrap"></div>
+      <div>
+        <div id="chartSummary" style="margin-bottom:12px;"></div>
+        <div style="overflow-x:auto;">
+          <table class="ptable" id="planetTable"></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Действия с отчётом -->
+  <section class="card no-print hidden" id="reportActions">
+    <div class="toolbar">
+      <button class="btn btn-primary" id="btnPDF" type="button">📄 Скачать PDF</button>
+      <button class="btn btn-gold" id="btnCopy" type="button">📋 Копировать текст</button>
+      <span class="status-pill">Для PDF выберите «Сохранить как PDF» и формат A4 в окне печати.</span>
+    </div>
+  </section>
+
+  <!-- Превью отчёта -->
+  <div class="report-preview hidden" id="reportPreview">
+    <div id="report-root"></div>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="spinner"></div>
+  <p id="overlayMsg">Рассчитываем карту…</p>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- Декоративная мандала (шаблон, клонируется в обложку) -->
+<svg id="mandala-template" class="hidden" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#df2227" stroke-width="0.8">
+    <circle cx="100" cy="100" r="92"/>
+    <circle cx="100" cy="100" r="74"/>
+    <circle cx="100" cy="100" r="50"/>
+    <circle cx="100" cy="100" r="26"/>
+    <g id="petals"></g>
+  </g>
+</svg>
+
+<script src="js/ephemeris.js"></script>
+<script src="js/astro-data.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/interpret.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
