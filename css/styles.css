@@ -328,9 +328,10 @@ textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
  *  ПЕЧАТЬ / PDF (A4)
  * ========================================================================== */
 @media print {
-  @page { size: A4; margin: 14mm 0; }
+  /* симметричные поля 13 мм со всех сторон — контент никогда не обрезается */
+  @page { size: A4; margin: 13mm; }
   html, body {
-    background: var(--paper);
+    background: #ffffff;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .app-header, .wrap > .card, .toolbar, .toast, .overlay, .no-print { display: none !important; }
@@ -338,27 +339,31 @@ textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
   .report-preview { background: none; padding: 0; }
   #report-root { display: block !important; }
 
+  /* ГИБКАЯ ширина — заполняет печатаемую область, не вылезает за поля */
   .page {
-    width: 210mm; min-height: 269mm; margin: 0; box-shadow: none;
+    width: auto; min-height: calc(297mm - 26mm); margin: 0; box-shadow: none;
+    padding: 14mm 12mm; overflow: visible;
     page-break-after: always; break-after: page;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
+  .page::before { inset: 4mm; }
   .report-body {
-    width: 100%; box-shadow: none; padding: 0 18mm; background: var(--paper);
+    width: auto; box-shadow: none; padding: 0 6mm; background: #ffffff;
   }
-  /* на печати «фурнитура» (фикс. полосы) повторяется на каждой странице,
-     поэтому собственные полосы обложки скрываем во избежание двойных */
+  /* «фурнитура» (фикс. полосы + подпись) повторяется на каждой странице;
+     собственные полосы обложки скрываем во избежание двойных */
   .page-bar-top, .page-bar-bottom { display: none !important; }
   .print-furniture { display: block; }
+  /* полосы выходят в поля (-13мм) до самого края листа — фон «в обрез» */
   .pf-top, .pf-bottom {
-    position: fixed; left: 0; right: 0; height: 6mm;
+    position: fixed; left: -13mm; right: -13mm; height: 6mm;
     background: linear-gradient(90deg, var(--red), var(--orange), var(--red));
   }
-  .pf-top { top: -14mm; }
-  .pf-bottom { bottom: -14mm; }
+  .pf-top { top: -13mm; }
+  .pf-bottom { bottom: -13mm; }
   .pf-foot {
-    position: fixed; bottom: -13mm; left: 0; right: 0; height: 6mm;
-    text-align: center; color: #ffffff; font-size: 8px; line-height: 6mm;
+    position: fixed; bottom: -9mm; left: -13mm; right: -13mm; height: 5mm;
+    text-align: center; color: #ffffff; font-size: 8px; line-height: 5mm;
     letter-spacing: 0.4px;
   }
   .r-h2, .remedy, .chart-wrap, .r-table, .report-content p, .report-footer {
