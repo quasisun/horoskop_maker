@@ -227,6 +227,35 @@
   var saveImgTimer = null;
   function scheduleSaveImages() { clearTimeout(saveImgTimer); saveImgTimer = setTimeout(function () { saveDraft(true); }, 800); }
 
+  // векторная иконка-самоцвет (огранённый октагон) по цветам камня
+  var gemSeq = 0;
+  function gemSVG(c) {
+    var gid = 'gem' + (gemSeq++);
+    var R = 44, r = 20, cx = 50, cy = 50, outer = [], inner = [], i;
+    for (i = 0; i < 8; i++) {
+      var ang = (22.5 + 45 * i) * Math.PI / 180;
+      outer.push([cx + R * Math.cos(ang), cy + R * Math.sin(ang)]);
+      inner.push([cx + r * Math.cos(ang), cy + r * Math.sin(ang)]);
+    }
+    function pts(a) { return a.map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' '); }
+    var facets = '';
+    for (i = 0; i < 8; i++) {
+      facets += '<line x1="' + outer[i][0].toFixed(1) + '" y1="' + outer[i][1].toFixed(1) +
+        '" x2="' + inner[i][0].toFixed(1) + '" y2="' + inner[i][1].toFixed(1) +
+        '" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>';
+    }
+    return '<svg viewBox="0 0 100 100" class="gem-svg" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs><radialGradient id="' + gid + '" cx="38%" cy="30%" r="80%">' +
+      '<stop offset="0%" stop-color="' + c.light + '"/>' +
+      '<stop offset="55%" stop-color="' + c.base + '"/>' +
+      '<stop offset="100%" stop-color="' + c.dark + '"/></radialGradient></defs>' +
+      '<polygon points="' + pts(outer) + '" fill="url(#' + gid + ')" stroke="' + c.dark +
+      '" stroke-width="1.2" stroke-linejoin="round"/>' +
+      '<polygon points="' + pts(inner) + '" fill="' + c.light + '" fill-opacity="0.30" ' +
+      'stroke="rgba(255,255,255,0.6)" stroke-width="0.8"/>' + facets +
+      '<ellipse cx="40" cy="33" rx="8.5" ry="4.5" fill="#fff" fill-opacity="0.5"/></svg>';
+  }
+
   // изображения раздела для отчёта (HTML)
   function imagesHTML(section) {
     var imgs = attachments.filter(function (a) { return a.section === section; });
@@ -459,6 +488,37 @@
       body.push('<div class="remedy"><h4>Комментарий астролога по упайям</h4>' +
         '<div class="note-block"><div class="src-tag">из заметок специалиста</div>' +
         rnotes.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div></div>');
+    }
+
+    // рекомендуемые драгоценные камни
+    var gems = window.Interpret.gemstones(chart);
+    body.push('<div class="r-h2 font-jaipur">Рекомендуемые драгоценные камни</div>');
+    body.push('<p>Камни усиливают благотворные планеты карты. Главный камень соответствует ' +
+      'управителю Лагны; дополнительно полезны камни управителей тригон (5 и 9 домов). ' +
+      'Носить камень рекомендуется только после консультации, подбора качества и освящения мантрой.</p>');
+    gems.recommended.forEach(function (g) {
+      body.push(
+        '<div class="gem-card">' +
+          '<a class="gem-vis" href="' + g.url + '" target="_blank" rel="noopener">' + gemSVG(g.colors) + '</a>' +
+          '<div class="gem-info">' +
+            '<h4>' + esc(g.stone) + ' — для планеты ' + esc(g.planet) + '</h4>' +
+            '<div class="reason">' + esc(g.role) + '</div>' +
+            '<ul>' +
+              '<li>Металл оправы: ' + esc(g.metal) + '</li>' +
+              '<li>Палец: ' + esc(g.finger) + '</li>' +
+              '<li>День ношения (впервые надевать): ' + esc(g.day) + '</li>' +
+              '<li>Вес: ' + esc(g.weight) + '</li>' +
+              (g.mantra ? '<li>Освящение мантрой: «' + esc(g.mantra) + '»</li>' : '') +
+            '</ul>' +
+            '<a class="gem-link" href="' + g.url + '" target="_blank" rel="noopener">Подобрать на astrostone.ru →</a>' +
+          '</div>' +
+        '</div>');
+    });
+    if (gems.cautions.length) {
+      body.push('<p class="gem-caution"><b>С осторожностью:</b> без особых показаний обычно ' +
+        'не рекомендуются камни ' +
+        gems.cautions.map(function (c) { return esc(c.stone) + ' (' + esc(c.name) + ')'; }).join(', ') +
+        ' — это управители «трудных» домов (6/8/12). Решение принимается астрологом индивидуально.</p>');
     }
 
     // приложения (общие изображения)

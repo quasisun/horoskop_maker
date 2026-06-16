@@ -382,12 +382,82 @@
     return out;
   }
 
+  /* ---- Рекомендуемые драгоценные камни ------------------------------------
+   * Логика: главный камень — управителя Лагны; дополнительно камни управителей
+   * тригон (5 и 9 дома). Камни управителей дустхан (6/8/12) выносятся в раздел
+   * предостережений. Цвета — для отрисовки иконки-самоцвета. */
+  var GEM_DATA = {
+    sun:     { stone: 'Рубин',           metal: 'золото',                finger: 'безымянный', day: 'воскресенье', colors: { light: '#ff7a8a', base: '#d11a3a', dark: '#7c0d22' } },
+    moon:    { stone: 'Жемчуг',          metal: 'серебро',               finger: 'мизинец',    day: 'понедельник', colors: { light: '#ffffff', base: '#efe7d6', dark: '#c9bca0' } },
+    mars:    { stone: 'Красный коралл',  metal: 'золото или медь',       finger: 'безымянный', day: 'вторник',     colors: { light: '#ff9a86', base: '#f0533c', dark: '#a82e1b' } },
+    mercury: { stone: 'Изумруд',         metal: 'золото',                finger: 'мизинец',    day: 'среда',       colors: { light: '#6fe0a8', base: '#1f9e63', dark: '#0c5e3a' } },
+    jupiter: { stone: 'Жёлтый сапфир',   metal: 'золото',                finger: 'указательный', day: 'четверг',   colors: { light: '#ffe27a', base: '#f4c430', dark: '#b07f0a' } },
+    venus:   { stone: 'Бриллиант',       metal: 'серебро или белое золото', finger: 'средний', day: 'пятница',     colors: { light: '#ffffff', base: '#dcecf2', dark: '#9fb8c2' } },
+    saturn:  { stone: 'Синий сапфир',    metal: 'серебро',               finger: 'средний',    day: 'суббота',     colors: { light: '#6f8fe0', base: '#1a3fa0', dark: '#0c2160' } },
+    rahu:    { stone: 'Гессонит (гомеда)', metal: 'серебро',             finger: 'средний',    day: 'суббота',     colors: { light: '#f0b46a', base: '#c97b2c', dark: '#864c12' } },
+    ketu:    { stone: 'Кошачий глаз',    metal: 'серебро',               finger: 'безымянный', day: 'вторник',     colors: { light: '#cfc79a', base: '#9b8f5a', dark: '#5f5733' } }
+  };
+  var GEM_WEIGHT = 'от 3 до 6 каратов (подбирается индивидуально)';
+
+  function astroUrl(planetRu) {
+    return 'https://astrostone.ru/astrokamni?tfc_quantity[2133591991]=y' +
+      '&tfc_charact:10792782[2133591991]=' + encodeURIComponent(planetRu) + '&tfc_div=:::';
+  }
+
+  function gemstones(chart) {
+    var rec = [], cautions = [], used = {};
+
+    function ruledHouses(key) {
+      var hs = [];
+      for (var s = 0; s < 12; s++) {
+        if (A.SIGNS[s].lord === key) hs.push(((s - chart.ascSignIndex + 12) % 12) + 1);
+      }
+      return hs;
+    }
+    function add(planetObj, role) {
+      if (!planetObj || used[planetObj.key]) return;
+      var hs = ruledHouses(planetObj.key);
+      var isTrikona = hs.some(function (h) { return h === 1 || h === 5 || h === 9; });
+      var isDusthana = hs.some(function (h) { return h === 6 || h === 8 || h === 12; });
+      used[planetObj.key] = true;
+      var g = GEM_DATA[planetObj.key];
+      if (isDusthana && !isTrikona) {
+        cautions.push({ name: planetObj.name, stone: g.stone, houses: hs });
+        return;
+      }
+      rec.push({
+        planetKey: planetObj.key, planet: planetObj.name, role: role,
+        stone: g.stone, metal: g.metal, finger: g.finger, day: g.day, weight: GEM_WEIGHT,
+        colors: g.colors, url: astroUrl(A.PLANETS[planetObj.key].ru),
+        mantra: REMEDY[planetObj.key] ? REMEDY[planetObj.key].mantra : ''
+      });
+    }
+
+    add(houseLord(chart, 1), 'управитель Лагны — главный камень жизненной силы');
+    add(houseLord(chart, 5), 'управитель 5-го дома (трина: разум, удача, дети)');
+    add(houseLord(chart, 9), 'управитель 9-го дома (трина: дхарма, удача, благословение учителей)');
+
+    [6, 8, 12].forEach(function (h) {
+      var l = houseLord(chart, h);
+      if (l && !used[l.key]) {
+        var hs = ruledHouses(l.key);
+        var isTrik = hs.some(function (x) { return x === 1 || x === 5 || x === 9; });
+        used[l.key] = true;
+        if (!isTrik) cautions.push({ name: l.name, stone: GEM_DATA[l.key].stone, houses: hs });
+      }
+    });
+
+    return { recommended: rec, cautions: cautions };
+  }
+
   root.Interpret = {
     generate: generate,
     remedies: remedies,
     polishNotes: polishNotes,
     VASTU_DIRECTIONS: VASTU_DIRECTIONS,
-    astroGeography: astroGeography
+    astroGeography: astroGeography,
+    gemstones: gemstones,
+    GEM_DATA: GEM_DATA
   };
 
 })(typeof window !== 'undefined' ? window : this);

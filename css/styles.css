@@ -302,6 +302,23 @@ textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
 .r-table th, .r-table td { padding: 6px 8px; border: 1px solid rgba(223,34,39,0.18); text-align: left; }
 .r-table th { background: rgba(223,34,39,0.08); color: var(--red-dark); }
 
+/* карточки рекомендуемых камней */
+.gem-card {
+  display: flex; gap: 14px; align-items: flex-start;
+  border: 1px solid rgba(223,34,39,0.18); border-radius: 12px;
+  padding: 12px 14px; margin: 0 0 12px;
+  page-break-inside: avoid; break-inside: avoid;
+}
+.gem-vis { flex: none; width: 64px; height: 64px; display: block; }
+.gem-svg { width: 64px; height: 64px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.18)); }
+.gem-info { flex: 1; min-width: 0; }
+.gem-info h4 { font-family: 'Jaipur', Arial, sans-serif; color: var(--red-dark); margin: 0 0 2px; font-size: 17px; font-weight: normal; }
+.gem-info ul { margin: 4px 0 6px; padding-left: 18px; }
+.gem-info li { margin: 1px 0; }
+.gem-link { display: inline-block; color: var(--red); font-weight: bold; text-decoration: none; border-bottom: 1px solid rgba(223,34,39,0.4); }
+.gem-link:hover { color: var(--orange); }
+.gem-caution { background: rgba(239,80,36,0.06); border-left: 3px solid var(--orange); padding: 8px 12px; border-radius: 0 8px 8px 0; font-size: 13px; }
+
 .remedy { margin: 0 0 12px; }
 .remedy h4 { font-family:'Jaipur',Arial,sans-serif; color: var(--red-dark); margin: 0 0 3px; font-size: 16px; font-weight: normal; }
 .remedy .reason { font-size: 12px; color: var(--terracotta); margin-bottom: 4px; }
