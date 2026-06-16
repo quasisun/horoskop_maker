@@ -11,10 +11,13 @@
 
   // поля формы, участвующие в состоянии
   var FIELDS = ['astrologer', 'reportType', 'reportDate', 'firstName', 'lastName',
-    'dob', 'tob', 'place', 'lat', 'lon', 'tz', 'notes', 'remedyNotes', 'apiKey'];
+    'dob', 'tob', 'place', 'lat', 'lon', 'tz', 'notes', 'remedyNotes',
+    'vastuNotes', 'astroGeoNotes', 'apiKey'];
 
   var DRAFT_KEY = 'jyotish-naadi-draft';
   var lastChart = null;
+  var attachments = [];   // [{ id, dataUrl, caption, section }]
+  var attachSeq = 0;
 
   /* ---- Мандала (декоративные лепестки) ----------------------------------- */
   function buildMandala() {
@@ -42,20 +45,30 @@
   }
 
   /* ---- Состояние формы --------------------------------------------------- */
-  function collectState() {
+  // withImages=false для снимков undo/redo (чтобы не таскать тяжёлый base64);
+  // withImages=true для черновика и экспорта JSON.
+  function collectState(withImages) {
     var s = {};
     FIELDS.forEach(function (f) { var el = $(f); if (el) s[f] = el.value; });
+    if (withImages) s._attachments = attachments;
     return s;
   }
   function applyState(s) {
     FIELDS.forEach(function (f) { var el = $(f); if (el && s[f] !== undefined) el.value = s[f]; });
+    if (s._attachments && Object.prototype.toString.call(s._attachments) === '[object Array]') {
+      attachments = s._attachments.map(function (a) {
+        if (a.id > attachSeq) attachSeq = a.id;
+        return a;
+      });
+      renderAttachments();
+    }
   }
 
   /* ---- Undo / Redo -------------------------------------------------------- */
   var undoStack = [], redoStack = [], suppress = false, snapTimer = null;
   function snapshot() {
     if (suppress) return;
-    var s = JSON.stringify(collectState());
+    var s = JSON.stringify(collectState(false));
     if (undoStack.length && undoStack[undoStack.length - 1] === s) return;
     undoStack.push(s);
     if (undoStack.length > 60) undoStack.shift();
@@ -91,10 +104,13 @@
   /* ---- Автосохранение ----------------------------------------------------- */
   function saveDraft(silent) {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(collectState()));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(collectState(true)));
       if (!silent) toast('Черновик сохранён');
       $('saveStatus').textContent = 'Черновик сохранён · ' + new Date().toLocaleTimeString('ru-RU');
-    } catch (e) { $('saveStatus').textContent = 'Не удалось сохранить (хранилище недоступно)'; }
+    } catch (e) {
+      $('saveStatus').textContent = 'Не удалось сохранить черновик' +
+        (attachments.length ? ' (возможно, изображения слишком большие для локального хранилища)' : ' (хранилище недоступно)');
+    }
   }
   function loadDraft() {
     try {
@@ -110,6 +126,115 @@
     t.classList.add('show');
     clearTimeout(toast._t);
     toast._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  /* ---- Изображения / вложения -------------------------------------------- */
+  var SECTION_LABEL = { general: 'Общее (Приложения)', vastu: 'Васту', astro: 'Астрогеография' };
+
+  function escAttr(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  // уменьшение изображения через canvas (макс. ширина 1200px, JPEG ~0.82)
+  function processImageFile(file, cb) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var maxW = 1200;
+        var scale = Math.min(1, maxW / img.width);
+        var w = Math.max(1, Math.round(img.width * scale));
+        var h = Math.max(1, Math.round(img.height * scale));
+        var c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); // фон для прозрачных PNG
+        ctx.drawImage(img, 0, 0, w, h);
+        try { cb(c.toDataURL('image/jpeg', 0.82)); }
+        catch (e) { cb(null); }
+      };
+      img.onerror = function () { cb(null); };
+      img.src = reader.result;
+    };
+    reader.onerror = function () { cb(null); };
+    reader.readAsDataURL(file);
+  }
+
+  function handleImageFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList).filter(function (f) { return /^image\//.test(f.type); });
+    if (!files.length) return;
+    var pending = files.length;
+    files.forEach(function (f) {
+      processImageFile(f, function (dataUrl) {
+        if (dataUrl) {
+          attachments.push({ id: ++attachSeq, dataUrl: dataUrl, caption: '', section: 'general' });
+        }
+        if (--pending === 0) { renderAttachments(); saveDraft(true); }
+      });
+    });
+    $('imageInput').value = '';
+  }
+
+  function renderAttachments() {
+    var box = $('attachList');
+    if (!box) return;
+    if (!attachments.length) { box.innerHTML = ''; return; }
+    box.innerHTML = attachments.map(function (a) {
+      var opts = ['general', 'vastu', 'astro'].map(function (key) {
+        return '<option value="' + key + '"' + (a.section === key ? ' selected' : '') + '>' + SECTION_LABEL[key] + '</option>';
+      }).join('');
+      return '<div class="attach-item" data-id="' + a.id + '">' +
+        '<img class="attach-thumb" src="' + a.dataUrl + '" alt="">' +
+        '<div class="attach-fields">' +
+          '<input class="attach-caption" type="text" placeholder="Подпись к изображению" value="' + escAttr(a.caption) + '">' +
+          '<div class="attach-row">' +
+            '<select class="attach-section">' + opts + '</select>' +
+            '<button class="btn-attach-del" type="button">Удалить</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function findAttach(id) {
+    for (var i = 0; i < attachments.length; i++) if (attachments[i].id === id) return attachments[i];
+    return null;
+  }
+
+  function initAttachments() {
+    $('btnAddImages').addEventListener('click', function () { $('imageInput').click(); });
+    $('imageInput').addEventListener('change', function (e) { handleImageFiles(e.target.files); });
+
+    var box = $('attachList');
+    box.addEventListener('input', function (e) {
+      var item = e.target.closest('.attach-item'); if (!item) return;
+      var a = findAttach(+item.getAttribute('data-id')); if (!a) return;
+      if (e.target.classList.contains('attach-caption')) { a.caption = e.target.value; scheduleSaveImages(); }
+    });
+    box.addEventListener('change', function (e) {
+      var item = e.target.closest('.attach-item'); if (!item) return;
+      var a = findAttach(+item.getAttribute('data-id')); if (!a) return;
+      if (e.target.classList.contains('attach-section')) { a.section = e.target.value; saveDraft(true); }
+    });
+    box.addEventListener('click', function (e) {
+      if (!e.target.classList.contains('btn-attach-del')) return;
+      var item = e.target.closest('.attach-item'); if (!item) return;
+      var id = +item.getAttribute('data-id');
+      attachments = attachments.filter(function (a) { return a.id !== id; });
+      renderAttachments(); saveDraft(true); toast('Изображение удалено');
+    });
+  }
+  var saveImgTimer = null;
+  function scheduleSaveImages() { clearTimeout(saveImgTimer); saveImgTimer = setTimeout(function () { saveDraft(true); }, 800); }
+
+  // изображения раздела для отчёта (HTML)
+  function imagesHTML(section) {
+    var imgs = attachments.filter(function (a) { return a.section === section; });
+    if (!imgs.length) return '';
+    return imgs.map(function (a) {
+      return '<figure class="r-figure"><img src="' + a.dataUrl + '" alt="">' +
+        (a.caption ? '<figcaption>' + esc(a.caption) + '</figcaption>' : '') + '</figure>';
+    }).join('');
   }
 
   /* ---- Автодополнение города --------------------------------------------- */
@@ -287,6 +412,40 @@
       body.push('</div>');
     }
 
+    // --- Васту-разбор (если есть заметки / изображения / выбран тип) ---
+    var rtypeRaw = $('reportType').value;
+    var vNotes = window.Interpret.polishNotes($('vastuNotes').value);
+    var vImgs = imagesHTML('vastu');
+    if (rtypeRaw === 'Васту-разбор' || vNotes.length || vImgs) {
+      body.push('<div class="r-h2 font-jaipur">Васту-разбор</div>');
+      body.push('<p>Согласно Васту-шастре каждое направление связано со стихией и планетой и отвечает ' +
+        'за свою сферу жизни. Это основа гармонизации пространства:</p>');
+      body.push('<table class="r-table"><tr><th>Направление</th><th>Стихия</th><th>Планета</th>' +
+        '<th>Сфера</th><th>Рекомендация</th></tr>' +
+        window.Interpret.VASTU_DIRECTIONS.map(function (d) {
+          return '<tr><td><b>' + esc(d.dir) + '</b></td><td>' + esc(d.elem) + '</td><td>' + esc(d.planet) +
+            '</td><td>' + esc(d.sphere) + '</td><td>' + esc(d.rec) + '</td></tr>';
+        }).join('') + '</table>');
+      if (vNotes.length) {
+        body.push('<div class="note-block"><div class="src-tag">из заметок специалиста</div>' +
+          vNotes.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>');
+      }
+      if (vImgs) body.push(vImgs);
+    }
+
+    // --- Астрогеография ---
+    var aNotes = window.Interpret.polishNotes($('astroGeoNotes').value);
+    var aImgs = imagesHTML('astro');
+    if (rtypeRaw === 'Астрогеография' || aNotes.length || aImgs) {
+      body.push('<div class="r-h2 font-jaipur">Астрогеография</div>');
+      window.Interpret.astroGeography(chart).forEach(function (p) { body.push('<p>' + esc(p) + '</p>'); });
+      if (aNotes.length) {
+        body.push('<div class="note-block"><div class="src-tag">из заметок специалиста</div>' +
+          aNotes.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>');
+      }
+      if (aImgs) body.push(aImgs);
+    }
+
     // упайи
     body.push('<div class="r-h2 font-jaipur">Упайи — рекомендованные средства</div>');
     var rem = window.Interpret.remedies(chart);
@@ -300,6 +459,13 @@
       body.push('<div class="remedy"><h4>Комментарий астролога по упайям</h4>' +
         '<div class="note-block"><div class="src-tag">из заметок специалиста</div>' +
         rnotes.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div></div>');
+    }
+
+    // приложения (общие изображения)
+    var gImgs = imagesHTML('general');
+    if (gImgs) {
+      body.push('<div class="r-h2 font-jaipur">Приложения</div>');
+      body.push(gImgs);
     }
 
     // подвал
@@ -394,8 +560,8 @@
 
   /* ---- JSON экспорт/импорт ------------------------------------------------ */
   function exportJSON() {
-    var data = collectState();
-    data._meta = { app: 'jyotish-naadi', version: 1, exported: new Date().toISOString() };
+    var data = collectState(true);
+    data._meta = { app: 'jyotish-naadi', version: 2, exported: new Date().toISOString() };
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -465,6 +631,7 @@
   function init() {
     buildMandala();
     initPlaceAutocomplete();
+    initAttachments();
 
     // дата составления = сегодня (редактируемо)
     var today = new Date();

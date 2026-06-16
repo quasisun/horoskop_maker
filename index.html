@@ -35,6 +35,8 @@
           <option>Анализ здоровья</option>
           <option>Детский гороскоп</option>
           <option>Годовой прогноз</option>
+          <option>Васту-разбор</option>
+          <option>Астрогеография</option>
           <option>Произвольный разбор</option>
         </select>
       </div>
@@ -110,6 +112,28 @@
     <h2 class="font-jaipur"><span class="num">4</span>Комментарий астролога по упайям</h2>
     <p class="hint">Ваши персональные рекомендации по средствам (упайям) — добавятся к автоматически подобранным.</p>
     <textarea id="remedyNotes" style="min-height:110px;" placeholder="Например: особые практики, посещение храма, обеты…"></textarea>
+  </section>
+
+  <!-- 5. Васту и астрогеография -->
+  <section class="card no-print">
+    <h2 class="font-jaipur"><span class="num">5</span>Васту и астрогеография</h2>
+    <p class="hint">Заметки по этим разделам. В отчёт добавятся только заполненные разделы
+      (к ним прилагается авто-справка по направлениям Васту и общие ориентиры по астрогеографии).</p>
+    <label for="vastuNotes">Васту-разбор</label>
+    <textarea id="vastuNotes" style="min-height:120px;" placeholder="Наблюдения по Васту: направления, зоны, коррекции пространства…"></textarea>
+    <label for="astroGeoNotes" style="margin-top:14px;">Астрогеография / астрокартография</label>
+    <textarea id="astroGeoNotes" style="min-height:120px;" placeholder="Благоприятные и неблагоприятные локации, линии планет, рекомендации по переезду…"></textarea>
+  </section>
+
+  <!-- 6. Изображения -->
+  <section class="card no-print">
+    <h2 class="font-jaipur"><span class="num">6</span>Изображения и вложения</h2>
+    <p class="hint">Прикрепите скриншоты (расчёт Васту, карты астрокартографии и т. д.). У каждого
+      изображения можно задать подпись и раздел отчёта, в который оно попадёт. Изображения
+      сохраняются в черновике и в экспорте JSON, печатаются в PDF.</p>
+    <button class="btn btn-ghost" id="btnAddImages" type="button">🖼 Добавить изображения</button>
+    <input id="imageInput" type="file" accept="image/*" multiple class="hidden">
+    <div id="attachList" class="attach-list"></div>
   </section>
 
   <!-- Действия -->
