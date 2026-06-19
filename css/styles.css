@@ -356,9 +356,25 @@ textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .overlay p { margin-top: 16px; color: var(--red-dark); font-weight: bold; }
 
-/* во время генерации PDF-файла убираем тени/отступы превью */
-.pdf-capturing .page, .pdf-capturing .report-body { box-shadow: none !important; }
-.pdf-capturing .report-body { margin: 0 auto; }
+/* контейнер для генерации PDF-файла: собственная вёрстка, не зависит от
+   ширины окна и медиазапросов; обложка без фикс. высоты (нет пустых страниц) */
+/* «сцена» для генерации PDF: fixed-обёртка (не сдвигает раскладку, спрятана
+   под содержимым и оверлеем), а сам документ внутри — в нормальном потоке
+   (static), иначе html2canvas захватывает только одну страницу. */
+.pdf-stage { position: fixed; left: 0; top: 0; z-index: -1; }
+.pdf-doc { position: static; width: 760px; background: #fff; color: var(--ink); }
+.pdf-doc .page {
+  width: 100%; min-height: 0; margin: 0; padding: 0; box-shadow: none;
+  overflow: visible; page-break-after: always; break-after: page;
+}
+.pdf-doc .page::before { display: none; }
+.pdf-doc .page-bar-top { position: static; height: 7mm; }
+.pdf-doc .page-bar-bottom { position: static; height: auto; min-height: 7mm; margin-top: 16px; }
+.pdf-doc .cover { min-height: 0; padding: 8px 16px 0; display: block; }
+.pdf-doc .cover-frame { min-height: 320px; margin: 0 0 14px; }
+.pdf-doc .report-body { width: 100%; min-height: 0; margin: 0; padding: 12px 2px; box-shadow: none; background: #fff; }
+.pdf-doc img { max-width: 100%; }
+.pdf-doc .r-figure img { max-height: none; }
 
 .hidden { display: none !important; }
 .error-text { color: var(--red); font-size: 13px; margin-top: 6px; }

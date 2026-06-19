@@ -709,24 +709,35 @@
   function downloadPDF() {
     if (!lastChart) { toast('Сначала сформируйте отчёт'); return; }
     if (typeof html2pdf === 'undefined') { toast('Модуль PDF не загрузился — используйте «Печать»'); return; }
-    var el = $('report-root');
     var base = ('goroskop_' + ($('lastName').value || '') + '_' + ($('firstName').value || ''))
       .trim().replace(/\s+/g, '_');
     showOverlay('Готовим PDF-файл…');
-    document.body.classList.add('pdf-capturing');
+
+    // Отдельный контейнер с собственной вёрсткой — не зависит от ширины окна
+    // и медиазапросов, фиксированная высота обложки убрана (нет пустых страниц).
+    var src = $('report-root').cloneNode(true);
+    var pf = src.querySelector('.print-furniture'); if (pf) pf.remove();
+    var stage = document.createElement('div');
+    stage.className = 'pdf-stage';
+    var holder = document.createElement('div');
+    holder.className = 'pdf-doc';
+    while (src.firstChild) holder.appendChild(src.firstChild);
+    stage.appendChild(holder);
+    document.body.appendChild(stage);
+
+    function done() { if (stage.parentNode) stage.parentNode.removeChild(stage); hideOverlay(); }
     var opt = {
-      margin: 0,
+      margin: [12, 12, 14, 12],                 // поля: верх, лево, низ, право (мм)
       filename: (base || 'goroskop') + '.pdf',
-      image: { type: 'jpeg', quality: 0.96 },
-      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: 794 },
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: 1000 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'], before: '.report-body',
-        avoid: ['.r-figure', '.gem-card', '.r-table', '.remedy', '.report-footer'] }
+      // avoid-all: ни один блок (абзац, таблица, карточка) не рвётся между страниц
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
-    function done() { document.body.classList.remove('pdf-capturing'); hideOverlay(); }
     var ready = (window.document && document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
     ready.then(function () {
-      html2pdf().set(opt).from(el).save()
+      html2pdf().set(opt).from(holder).save()
         .then(function () { done(); toast('PDF сохранён'); })
         .catch(function () { done(); toast('Не удалось создать PDF — попробуйте «Печать»'); });
     });
