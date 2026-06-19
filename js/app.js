@@ -268,34 +268,85 @@
 
   /* ---- Автодополнение города --------------------------------------------- */
   var sugIndex = -1;
+
+  // часовой пояс (IANA) -> смещение UTC в часах (текущее; пользователь может
+  // поправить для летнего времени / исторических переводов часов)
+  function ianaToOffset(iana) {
+    try {
+      var now = new Date();
+      var tzDate = new Date(now.toLocaleString('en-US', { timeZone: iana }));
+      var utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+      return Math.round(((tzDate - utcDate) / 3600000) * 4) / 4; // до четверти часа
+    } catch (e) { return null; }
+  }
+
   function initPlaceAutocomplete() {
     var input = $('place'), box = $('suggestions');
-    function render(list) {
-      if (!list.length) { box.classList.add('hidden'); return; }
-      box.innerHTML = list.map(function (c, i) {
-        return '<div data-i="' + i + '">' + c.name +
+    var geoTimer = null, reqToken = 0;
+
+    function render(list, loading) {
+      var html = list.map(function (c, i) {
+        return '<div data-i="' + i + '">' + (c.label || c.name) +
           ' <span class="coord">(' + c.lat.toFixed(2) + ', ' + c.lon.toFixed(2) +
           ', UTC' + (c.tz >= 0 ? '+' : '') + c.tz + ')</span></div>';
       }).join('');
+      if (loading) html += '<div class="sug-loading">поиск онлайн…</div>';
+      if (!html) { box.classList.add('hidden'); return; }
+      box.innerHTML = html;
       box.classList.remove('hidden');
       sugIndex = -1;
       box._list = list;
     }
     function pick(c) {
       input.value = c.name;
-      $('lat').value = c.lat;
-      $('lon').value = c.lon;
+      $('lat').value = (Math.round(c.lat * 10000) / 10000);
+      $('lon').value = (Math.round(c.lon * 10000) / 10000);
       $('tz').value = c.tz;
       box.classList.add('hidden');
       scheduleSnapshot();
     }
+    function localMatches(q) {
+      return A.CITIES.filter(function (c) {
+        return c.name.toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 6);
+    }
+    // онлайн-геокодер Open-Meteo (находит любой, даже небольшой, город)
+    function searchOnline(q, local, token) {
+      fetch('https://geocoding-api.open-meteo.com/v1/search?name=' +
+        encodeURIComponent(q) + '&count=8&language=ru&format=json')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (token !== reqToken) return; // ответ устарел
+          var have = {};
+          local.forEach(function (c) { have[c.name.toLowerCase()] = true; });
+          var online = ((data && data.results) || []).map(function (r) {
+            var off = ianaToOffset(r.timezone);
+            return {
+              name: r.name,
+              label: r.name + (r.admin1 ? ', ' + r.admin1 : '') + (r.country ? ', ' + r.country : ''),
+              lat: r.latitude, lon: r.longitude,
+              tz: off == null ? Math.round(r.longitude / 15) : off
+            };
+          }).filter(function (c) {
+            var k = c.name.toLowerCase();
+            if (have[k]) return false; have[k] = true; return true;
+          });
+          render(local.concat(online).slice(0, 12), false);
+        })
+        .catch(function () { /* офлайн / нет сети — остаётся локальный список */ });
+    }
     input.addEventListener('input', function () {
       var q = input.value.trim().toLowerCase();
-      if (q.length < 1) { box.classList.add('hidden'); return; }
-      var list = A.CITIES.filter(function (c) {
-        return c.name.toLowerCase().indexOf(q) !== -1;
-      }).slice(0, 8);
-      render(list);
+      reqToken++;
+      if (q.length < 2) {
+        if (q.length === 1) render(localMatches(q), false); else box.classList.add('hidden');
+        return;
+      }
+      var local = localMatches(q);
+      render(local, true);                 // мгновенно — локальные + индикатор
+      clearTimeout(geoTimer);
+      var token = reqToken;
+      geoTimer = setTimeout(function () { searchOnline(q, local, token); }, 300);
     });
     box.addEventListener('click', function (e) {
       var d = e.target.closest('div[data-i]');

@@ -121,6 +121,7 @@ textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
 .suggestions div { padding: 9px 13px; cursor: pointer; font-size: 14px; }
 .suggestions div:hover, .suggestions div.active { background: #fdecea; }
 .suggestions .coord { color: #9a8a78; font-size: 12px; }
+.suggestions .sug-loading { padding: 8px 13px; font-size: 12px; color: #9a8a78; font-style: italic; cursor: default; }
 
 /* ---- Список вложений (изображения) -------------------------------------- */
 .attach-list { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
