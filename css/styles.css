@@ -356,6 +356,10 @@ textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .overlay p { margin-top: 16px; color: var(--red-dark); font-weight: bold; }
 
+/* во время генерации PDF-файла убираем тени/отступы превью */
+.pdf-capturing .page, .pdf-capturing .report-body { box-shadow: none !important; }
+.pdf-capturing .report-body { margin: 0 auto; }
+
 .hidden { display: none !important; }
 .error-text { color: var(--red); font-size: 13px; margin-top: 6px; }
 .tz-note { color: #1d7a33; font-size: 12.5px; margin-top: 8px; }

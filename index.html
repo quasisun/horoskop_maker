@@ -170,10 +170,12 @@
   <!-- Действия с отчётом -->
   <section class="card no-print hidden" id="reportActions">
     <div class="toolbar">
-      <button class="btn btn-primary" id="btnPDF" type="button">📄 Скачать PDF</button>
+      <button class="btn btn-primary" id="btnPDFFile" type="button">⬇ Скачать PDF файлом</button>
+      <button class="btn btn-ghost" id="btnPDF" type="button">🖨 Печать / Сохранить как PDF</button>
       <button class="btn btn-gold" id="btnCopy" type="button">📋 Копировать текст</button>
-      <span class="status-pill">Для PDF выберите «Сохранить как PDF» и формат A4 в окне печати.</span>
     </div>
+    <p class="status-pill" id="pdfHint" style="margin-top:10px;">«Скачать PDF файлом» — сохраняет готовый PDF сразу,
+      без окна печати (рекомендуется). «Печать» — открывает диалог браузера (выберите «Сохранить как PDF», формат A4).</p>
   </section>
 
   <!-- Превью отчёта -->
@@ -200,6 +202,7 @@
   </g>
 </svg>
 
+<script src="js/lib/html2pdf.bundle.min.js"></script>
 <script src="js/ephemeris.js"></script>
 <script src="js/astro-data.js"></script>
 <script src="js/chart.js"></script>

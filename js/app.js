@@ -705,6 +705,33 @@
     document.body.removeChild(ta);
   }
 
+  /* ---- Прямое скачивание PDF (без диалога печати) ------------------------ */
+  function downloadPDF() {
+    if (!lastChart) { toast('Сначала сформируйте отчёт'); return; }
+    if (typeof html2pdf === 'undefined') { toast('Модуль PDF не загрузился — используйте «Печать»'); return; }
+    var el = $('report-root');
+    var base = ('goroskop_' + ($('lastName').value || '') + '_' + ($('firstName').value || ''))
+      .trim().replace(/\s+/g, '_');
+    showOverlay('Готовим PDF-файл…');
+    document.body.classList.add('pdf-capturing');
+    var opt = {
+      margin: 0,
+      filename: (base || 'goroskop') + '.pdf',
+      image: { type: 'jpeg', quality: 0.96 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: 794 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'], before: '.report-body',
+        avoid: ['.r-figure', '.gem-card', '.r-table', '.remedy', '.report-footer'] }
+    };
+    function done() { document.body.classList.remove('pdf-capturing'); hideOverlay(); }
+    var ready = (window.document && document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    ready.then(function () {
+      html2pdf().set(opt).from(el).save()
+        .then(function () { done(); toast('PDF сохранён'); })
+        .catch(function () { done(); toast('Не удалось создать PDF — попробуйте «Печать»'); });
+    });
+  }
+
   /* ---- JSON экспорт/импорт ------------------------------------------------ */
   function exportJSON() {
     var data = collectState(true);
@@ -796,6 +823,7 @@
     $('btnExportJSON').addEventListener('click', exportJSON);
     $('btnImportJSON').addEventListener('click', function () { $('importFile').click(); });
     $('importFile').addEventListener('change', function (e) { if (e.target.files[0]) importJSON(e.target.files[0]); });
+    $('btnPDFFile').addEventListener('click', downloadPDF);
     $('btnPDF').addEventListener('click', function () { window.print(); });
     $('btnCopy').addEventListener('click', copyText);
     $('btnUndo').addEventListener('click', undo);
