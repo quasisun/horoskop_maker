@@ -11,7 +11,7 @@
 
   // поля формы, участвующие в состоянии
   var FIELDS = ['astrologer', 'reportType', 'reportDate', 'firstName', 'lastName',
-    'dob', 'tob', 'place', 'lat', 'lon', 'tz', 'notes', 'remedyNotes',
+    'dob', 'tob', 'place', 'lat', 'lon', 'tz', 'tzIana', 'notes', 'remedyNotes',
     'vastuNotes', 'astroGeoNotes', 'apiKey'];
 
   var DRAFT_KEY = 'jyotish-naadi-draft';
@@ -269,15 +269,48 @@
   /* ---- Автодополнение города --------------------------------------------- */
   var sugIndex = -1;
 
-  // часовой пояс (IANA) -> смещение UTC в часах (текущее; пользователь может
-  // поправить для летнего времени / исторических переводов часов)
-  function ianaToOffset(iana) {
+  // часовой пояс (IANA) -> смещение UTC в часах для КОНКРЕТНОЙ даты/времени.
+  // База IANA в браузере хранит всю историю (декретное время СССР, летнее время,
+  // отмену перевода часов и т.д.), поэтому смещение получается исторически верным.
+  function offsetForDate(iana, y, mo, d, h, mi) {
     try {
-      var now = new Date();
-      var tzDate = new Date(now.toLocaleString('en-US', { timeZone: iana }));
-      var utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
-      return Math.round(((tzDate - utcDate) / 3600000) * 4) / 4; // до четверти часа
+      function offAt(instant) {
+        var dtf = new Intl.DateTimeFormat('en-US', {
+          timeZone: iana, hour12: false, year: 'numeric', month: '2-digit',
+          day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+        var p = {};
+        dtf.formatToParts(instant).forEach(function (x) { p[x.type] = x.value; });
+        var hh = p.hour === '24' ? 0 : +p.hour;
+        var asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, hh, +p.minute, +p.second);
+        return (asUTC - instant.getTime()) / 3600000;
+      }
+      var guess = Date.UTC(y, mo - 1, d, h, mi, 0);
+      var o1 = offAt(new Date(guess));
+      var o2 = offAt(new Date(guess - o1 * 3600000)); // уточнение возле переходов
+      return Math.round(o2 * 4) / 4;                  // до четверти часа
     } catch (e) { return null; }
+  }
+  // текущее смещение зоны (для подсказки в списке городов)
+  function ianaOffsetNow(iana) {
+    var n = new Date();
+    return offsetForDate(iana, n.getFullYear(), n.getMonth() + 1, n.getDate(), 12, 0);
+  }
+
+  // пересчёт пояса по выбранной зоне на дату рождения
+  function recomputeTz() {
+    var iana = $('tzIana').value;
+    if (!iana) { $('tzNote').textContent = ''; return; }
+    var dob = $('dob').value.split('-'), tob = ($('tob').value || '12:00').split(':');
+    if (dob.length !== 3 || !dob[0]) {
+      $('tzNote').textContent = 'Зона: ' + iana + ' — укажите дату рождения для точного исторического пояса.';
+      return;
+    }
+    var off = offsetForDate(iana, +dob[0], +dob[1], +dob[2], +tob[0] || 0, +tob[1] || 0);
+    if (off == null) { $('tzNote').textContent = ''; return; }
+    $('tz').value = off;
+    $('tzNote').textContent = 'Авто: UTC' + (off >= 0 ? '+' : '') + off +
+      ' — исторический пояс (' + iana + ') на дату рождения. При необходимости поправьте вручную.';
   }
 
   function initPlaceAutocomplete() {
@@ -302,7 +335,9 @@
       $('lat').value = (Math.round(c.lat * 10000) / 10000);
       $('lon').value = (Math.round(c.lon * 10000) / 10000);
       $('tz').value = c.tz;
+      $('tzIana').value = c.iana || '';
       box.classList.add('hidden');
+      recomputeTz();          // уточняем пояс на дату рождения (если зона известна)
       scheduleSnapshot();
     }
     function localMatches(q) {
@@ -320,12 +355,13 @@
           var have = {};
           local.forEach(function (c) { have[c.name.toLowerCase()] = true; });
           var online = ((data && data.results) || []).map(function (r) {
-            var off = ianaToOffset(r.timezone);
+            var off = r.timezone ? ianaOffsetNow(r.timezone) : null;
             return {
               name: r.name,
               label: r.name + (r.admin1 ? ', ' + r.admin1 : '') + (r.country ? ', ' + r.country : ''),
               lat: r.latitude, lon: r.longitude,
-              tz: off == null ? Math.round(r.longitude / 15) : off
+              tz: off == null ? Math.round(r.longitude / 15) : off,
+              iana: r.timezone || null
             };
           }).filter(function (c) {
             var k = c.name.toLowerCase();
@@ -771,6 +807,13 @@
       if (el) el.addEventListener('input', scheduleSnapshot);
       if (el && el.tagName === 'SELECT') el.addEventListener('change', scheduleSnapshot);
     });
+
+    // при изменении даты/времени рождения пересчитываем исторический пояс
+    $('dob').addEventListener('change', recomputeTz);
+    $('tob').addEventListener('change', recomputeTz);
+    // если пользователь правит пояс вручную — убираем авто-зону, чтобы не перетиралось
+    $('tz').addEventListener('input', function () { $('tzIana').value = ''; $('tzNote').textContent = ''; });
+    recomputeTz();   // восстановить подпись после загрузки черновика
 
     document.addEventListener('keydown', function (e) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }

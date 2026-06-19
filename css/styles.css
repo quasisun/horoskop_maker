@@ -358,6 +358,7 @@ textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
 
 .hidden { display: none !important; }
 .error-text { color: var(--red); font-size: 13px; margin-top: 6px; }
+.tz-note { color: #1d7a33; font-size: 12.5px; margin-top: 8px; }
 
 /* ---- Адаптивность -------------------------------------------------------- */
 @media (max-width: 820px) {
