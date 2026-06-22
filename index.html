@@ -49,7 +49,7 @@
 
   <!-- 2. Данные клиента -->
   <section class="card no-print">
-    <h2 class="font-jaipur"><span class="num">2</span>Данные рождения</h2>
+    <h2 class="font-jaipur"><span class="num">2</span><span id="birthHeading">Данные рождения</span></h2>
     <p class="hint">Точные дата, время и место рождения необходимы для расчёта сидерической карты.</p>
     <div class="grid cols-2">
       <div>
@@ -93,6 +93,54 @@
     <input id="tzIana" type="hidden">
     <div id="tzNote" class="tz-note"></div>
     <div id="birthError" class="error-text"></div>
+  </section>
+
+  <!-- 2b. Данные рождения — второй человек (только для совместимости) -->
+  <section class="card no-print hidden" id="person2Card">
+    <h2 class="font-jaipur"><span class="num">2</span>Данные рождения — второй человек</h2>
+    <p class="hint">Для гороскопа совместимости заполните данные обоих людей.</p>
+    <div class="grid cols-2">
+      <div>
+        <label for="firstName2">Имя</label>
+        <input id="firstName2" type="text" placeholder="Имя">
+      </div>
+      <div>
+        <label for="lastName2">Фамилия</label>
+        <input id="lastName2" type="text" placeholder="Фамилия">
+      </div>
+      <div>
+        <label for="dob2">Дата рождения</label>
+        <input id="dob2" type="date">
+      </div>
+      <div>
+        <label for="tob2">Время рождения</label>
+        <input id="tob2" type="time">
+      </div>
+    </div>
+    <div class="grid cols-2" style="margin-top:16px;">
+      <div class="field-autocomplete">
+        <label for="place2">Место рождения</label>
+        <input id="place2" type="text" autocomplete="off" placeholder="Начните вводить город…">
+        <div id="suggestions2" class="suggestions hidden"></div>
+      </div>
+      <div class="grid cols-3" style="gap:10px;">
+        <div>
+          <label for="lat2">Широта</label>
+          <input id="lat2" type="number" step="0.0001" placeholder="55.7558">
+        </div>
+        <div>
+          <label for="lon2">Долгота</label>
+          <input id="lon2" type="number" step="0.0001" placeholder="37.6173">
+        </div>
+        <div>
+          <label for="tz2">Пояс UTC</label>
+          <input id="tz2" type="number" step="0.25" placeholder="3">
+        </div>
+      </div>
+    </div>
+    <input id="tzIana2" type="hidden">
+    <div id="tzNote2" class="tz-note"></div>
+    <div id="birthError2" class="error-text"></div>
   </section>
 
   <!-- 3. Заметки астролога -->

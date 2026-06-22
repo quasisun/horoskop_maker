@@ -251,10 +251,31 @@
     ['Катманду', 27.7172, 85.3240, 5.75], ['Коломбо', 6.9271, 79.8612, 5.5]
   ].map(function (c) { return { name: c[0], lat: c[1], lon: c[2], tz: c[3], iana: ZONE_OF[c[0]] || null }; });
 
+  // ---- Данные для Гуна Милан (Ашта-кута, совместимость) --------------------
+  // Индексы по накшатре (0=Ашвини … 26=Ревати).
+  var NAK_GANA = [0,1,2,1,0,1,0,0,2,2,1,1,0,2,0,2,0,2,2,1,1,0,2,2,1,1,0]; // 0 дэва,1 манушья,2 ракшаса
+  var NAK_NADI = [0,1,2,2,1,0,0,1,2,2,1,0,0,1,2,2,1,0,0,1,2,2,1,0,0,1,2]; // 0 Ади,1 Мадхья,2 Антья
+  var NAK_YONI = [0,1,2,3,3,4,5,2,5,6,6,7,8,9,8,9,10,10,4,11,12,11,13,0,13,7,1]; // индекс животного
+  var GANA_NAMES = ['Дэва (божественная)', 'Манушья (человеческая)', 'Ракшаса (демоническая)'];
+  var NADI_NAMES = ['Ади (Вата)', 'Мадхья (Питта)', 'Антья (Капха)'];
+  var YONI_NAMES = ['Лошадь', 'Слон', 'Овца', 'Змея', 'Собака', 'Кошка', 'Крыса',
+    'Корова', 'Буйвол', 'Тигр', 'Олень', 'Обезьяна', 'Мангуст', 'Лев'];
+  // смертельные враги по йони (0 баллов): пары животных
+  var YONI_ENEMY = { 0: 8, 8: 0, 1: 13, 13: 1, 2: 11, 11: 2, 3: 12, 12: 3, 4: 10, 10: 4, 5: 6, 6: 5, 7: 9, 9: 7 };
+
+  // По раши (0=Овен … 11=Рыбы)
+  var RASHI_VARNA = [3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4];   // 4 Брахман,3 Кшатрий,2 Вайшья,1 Шудра
+  var VARNA_NAMES = { 4: 'Брахман', 3: 'Кшатрий', 2: 'Вайшья', 1: 'Шудра' };
+  var RASHI_VASHYA = [0, 0, 1, 2, 3, 1, 1, 4, 1, 0, 1, 2]; // 0 четвероногий,1 человек,2 водный,3 лесной,4 насекомое
+
   root.AstroData = {
     SIGNS: SIGNS, PLANETS: PLANETS, PLANET_ORDER: PLANET_ORDER,
     NAKSHATRAS: NAKSHATRAS, DIGNITY: DIGNITY, RELATIONS: RELATIONS,
-    STATUS_RULES: STATUS_RULES, CITIES: CITIES
+    STATUS_RULES: STATUS_RULES, CITIES: CITIES,
+    NAK_GANA: NAK_GANA, NAK_NADI: NAK_NADI, NAK_YONI: NAK_YONI,
+    GANA_NAMES: GANA_NAMES, NADI_NAMES: NADI_NAMES, YONI_NAMES: YONI_NAMES,
+    YONI_ENEMY: YONI_ENEMY, RASHI_VARNA: RASHI_VARNA, VARNA_NAMES: VARNA_NAMES,
+    RASHI_VASHYA: RASHI_VASHYA
   };
 
 })(typeof window !== 'undefined' ? window : this);

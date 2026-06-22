@@ -450,6 +450,101 @@
     return { recommended: rec, cautions: cautions };
   }
 
+  /* ---- Гуна Милан (Ашта-кута, совместимость по накшатрам Луны) ------------
+   * 8 кут на 36 баллов. Йони и Вашья считаются по упрощённым правилам и
+   * помечены как предварительные; остальные куты — по точным таблицам. */
+  function gunaMilan(c1, c2) {
+    var NAKLEN = 360 / 27;
+    function moon(c) {
+      var lon = c.raw.planets.moon;
+      return { nak: Math.floor(lon / NAKLEN) % 27, rashi: Math.floor(lon / 30) % 12 };
+    }
+    var a = moon(c1), b = moon(c2);
+    var items = [];
+
+    // 1. Варна (1)
+    var v1 = A.RASHI_VARNA[a.rashi], v2 = A.RASHI_VARNA[b.rashi];
+    var varna = (v1 >= v2) ? 1 : 0;
+    items.push({ name: 'Варна', got: varna, max: 1,
+      note: A.VARNA_NAMES[v1] + ' / ' + A.VARNA_NAMES[v2] + ' — духовная совместимость' });
+
+    // 2. Вашья (2) — упрощённо: одна группа = 2, иначе 1
+    var vashya = (A.RASHI_VASHYA[a.rashi] === A.RASHI_VASHYA[b.rashi]) ? 2 : 1;
+    items.push({ name: 'Вашья', got: vashya, max: 2, approx: true, note: 'взаимное влияние и притяжение' });
+
+    // 3. Тара/Дина (3) — счёт накшатр в обе стороны
+    function tara(from, to) {
+      var cnt = ((to - from + 27) % 27) + 1, rem = cnt % 9;
+      return (rem === 3 || rem === 5 || rem === 7) ? 0 : 1.5;
+    }
+    var taraScore = tara(a.nak, b.nak) + tara(b.nak, a.nak);
+    items.push({ name: 'Тара (Дина)', got: taraScore, max: 3, note: 'здоровье и благополучие' });
+
+    // 4. Йони (4)
+    var y1 = A.NAK_YONI[a.nak], y2 = A.NAK_YONI[b.nak];
+    var yoni = (y1 === y2) ? 4 : (A.YONI_ENEMY[y1] === y2 ? 0 : 2);
+    items.push({ name: 'Йони', got: yoni, max: 4, approx: true,
+      note: A.YONI_NAMES[y1] + ' / ' + A.YONI_NAMES[y2] + ' — интимная совместимость' });
+
+    // 5. Граха Майтри (5) — дружба управителей раши Луны
+    var l1 = A.SIGNS[a.rashi].lord, l2 = A.SIGNS[b.rashi].lord;
+    function rel(x, y) {
+      if (x === y) return 'self';
+      if (A.RELATIONS[x].friend.indexOf(y) !== -1) return 'friend';
+      if (A.RELATIONS[x].enemy.indexOf(y) !== -1) return 'enemy';
+      return 'neutral';
+    }
+    var maitriScore;
+    if (l1 === l2) maitriScore = 5;
+    else {
+      var r1 = rel(l1, l2), r2 = rel(l2, l1);
+      var pair = [r1, r2].sort().join('-');
+      var mp = { 'friend-friend': 5, 'friend-neutral': 4, 'neutral-neutral': 3,
+        'enemy-friend': 1, 'enemy-neutral': 0.5, 'enemy-enemy': 0 };
+      maitriScore = mp[pair]; if (maitriScore === undefined) maitriScore = 3;
+    }
+    items.push({ name: 'Граха Майтри', got: maitriScore, max: 5,
+      note: A.PLANETS[l1].ru + ' / ' + A.PLANETS[l2].ru + ' — психологическая близость' });
+
+    // 6. Гана (6)
+    var g1 = A.NAK_GANA[a.nak], g2 = A.NAK_GANA[b.nak];
+    var gana;
+    if (g1 === g2) gana = 6;
+    else if ((g1 === 0 && g2 === 1) || (g1 === 1 && g2 === 0)) gana = 5;
+    else if ((g1 === 0 && g2 === 2) || (g1 === 2 && g2 === 0)) gana = 1;
+    else gana = 0; // манушья-ракшаса
+    items.push({ name: 'Гана', got: gana, max: 6,
+      note: A.GANA_NAMES[g1] + ' / ' + A.GANA_NAMES[g2] + ' — темперамент' });
+
+    // 7. Бхакут (7) — взаимное положение раши
+    var d = (b.rashi - a.rashi + 12) % 12;
+    var badBhakut = [1, 11, 4, 8, 5, 7].indexOf(d) !== -1;
+    var bhakut = badBhakut ? 0 : 7;
+    items.push({ name: 'Бхакут', got: bhakut, max: 7,
+      note: bhakut ? 'благоприятно для семьи и достатка' : 'бхакут-доша (2/12, 5/9 или 6/8) — требует внимания' });
+
+    // 8. Нади (8)
+    var n1 = A.NAK_NADI[a.nak], n2 = A.NAK_NADI[b.nak];
+    var nadi = (n1 === n2) ? 0 : 8;
+    items.push({ name: 'Нади', got: nadi, max: 8,
+      note: nadi ? A.NADI_NAMES[n1] + ' / ' + A.NADI_NAMES[n2] + ' — здоровье потомства' : 'нади-доша (одна нади) — важнейшее предостережение' });
+
+    var total = items.reduce(function (s, it) { return s + it.got; }, 0);
+    var verdict;
+    if (total >= 32) verdict = 'отличная совместимость';
+    else if (total >= 24) verdict = 'хорошая совместимость';
+    else if (total >= 18) verdict = 'средняя совместимость — возможна при осознанной работе';
+    else verdict = 'низкая совместимость — традиционно союз не рекомендуется без коррекции';
+
+    var doshas = [];
+    if (nadi === 0) doshas.push('Нади-доша (совпадение нади) — традиционно серьёзное препятствие; требует анализа исключений и упай.');
+    if (bhakut === 0) doshas.push('Бхакут-доша (неблагоприятное взаиморасположение раши Луны) — внимание к благополучию и здоровью.');
+    if (gana === 0) doshas.push('Гана-доша (манушья–ракшаса) — различие темпераментов.');
+
+    return { items: items, total: total, max: 36, verdict: verdict, doshas: doshas,
+      moon1: a, moon2: b };
+  }
+
   root.Interpret = {
     generate: generate,
     remedies: remedies,
@@ -457,7 +552,8 @@
     VASTU_DIRECTIONS: VASTU_DIRECTIONS,
     astroGeography: astroGeography,
     gemstones: gemstones,
-    GEM_DATA: GEM_DATA
+    GEM_DATA: GEM_DATA,
+    gunaMilan: gunaMilan
   };
 
 })(typeof window !== 'undefined' ? window : this);

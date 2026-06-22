@@ -320,6 +320,13 @@ textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
 .gem-link:hover { color: var(--orange); }
 .gem-caution { background: rgba(239,80,36,0.06); border-left: 3px solid var(--orange); padding: 8px 12px; border-radius: 0 8px 8px 0; font-size: 13px; }
 
+/* итоговый балл совместимости */
+.compat-score {
+  text-align: center; font-family: 'Jaipur', Arial, sans-serif;
+  font-size: 24px; color: #fff; margin: 4px 0 14px; padding: 12px 18px;
+  border-radius: 12px; background: linear-gradient(135deg, var(--red), var(--orange));
+}
+
 .remedy { margin: 0 0 12px; }
 .remedy h4 { font-family:'Jaipur',Arial,sans-serif; color: var(--red-dark); margin: 0 0 3px; font-size: 16px; font-weight: normal; }
 .remedy .reason { font-size: 12px; color: var(--terracotta); margin-bottom: 4px; }

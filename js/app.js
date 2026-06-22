@@ -12,7 +12,11 @@
   // поля формы, участвующие в состоянии
   var FIELDS = ['astrologer', 'reportType', 'reportDate', 'firstName', 'lastName',
     'dob', 'tob', 'place', 'lat', 'lon', 'tz', 'tzIana', 'notes', 'remedyNotes',
-    'vastuNotes', 'astroGeoNotes', 'apiKey'];
+    'vastuNotes', 'astroGeoNotes', 'apiKey',
+    'firstName2', 'lastName2', 'dob2', 'tob2', 'place2', 'lat2', 'lon2', 'tz2', 'tzIana2'];
+
+  var COMPAT_TYPE = 'Совместимость (синастрия)';
+  function isCompat() { return $('reportType').value === COMPAT_TYPE; }
 
   var DRAFT_KEY = 'jyotish-naadi-draft';
   var lastChart = null;
@@ -297,25 +301,28 @@
     return offsetForDate(iana, n.getFullYear(), n.getMonth() + 1, n.getDate(), 12, 0);
   }
 
-  // пересчёт пояса по выбранной зоне на дату рождения
-  function recomputeTz() {
-    var iana = $('tzIana').value;
-    if (!iana) { $('tzNote').textContent = ''; return; }
-    var dob = $('dob').value.split('-'), tob = ($('tob').value || '12:00').split(':');
+  // пересчёт пояса по выбранной зоне на дату рождения (sfx: '' или '2')
+  function recomputeTz(sfx) {
+    sfx = sfx || '';
+    var iana = $('tzIana' + sfx).value;
+    var note = $('tzNote' + sfx);
+    if (!iana) { note.textContent = ''; return; }
+    var dob = $('dob' + sfx).value.split('-'), tob = ($('tob' + sfx).value || '12:00').split(':');
     if (dob.length !== 3 || !dob[0]) {
-      $('tzNote').textContent = 'Зона: ' + iana + ' — укажите дату рождения для точного исторического пояса.';
+      note.textContent = 'Зона: ' + iana + ' — укажите дату рождения для точного исторического пояса.';
       return;
     }
     var off = offsetForDate(iana, +dob[0], +dob[1], +dob[2], +tob[0] || 0, +tob[1] || 0);
-    if (off == null) { $('tzNote').textContent = ''; return; }
-    $('tz').value = off;
-    $('tzNote').textContent = 'Авто: UTC' + (off >= 0 ? '+' : '') + off +
+    if (off == null) { note.textContent = ''; return; }
+    $('tz' + sfx).value = off;
+    note.textContent = 'Авто: UTC' + (off >= 0 ? '+' : '') + off +
       ' — исторический пояс (' + iana + ') на дату рождения. При необходимости поправьте вручную.';
   }
 
-  function initPlaceAutocomplete() {
-    var input = $('place'), box = $('suggestions');
-    var geoTimer = null, reqToken = 0;
+  function initPlaceAutocomplete(sfx) {
+    sfx = sfx || '';
+    var input = $('place' + sfx), box = $('suggestions' + sfx);
+    var geoTimer = null, reqToken = 0, idx = -1;
 
     function render(list, loading) {
       var html = list.map(function (c, i) {
@@ -327,17 +334,17 @@
       if (!html) { box.classList.add('hidden'); return; }
       box.innerHTML = html;
       box.classList.remove('hidden');
-      sugIndex = -1;
+      idx = -1;
       box._list = list;
     }
     function pick(c) {
       input.value = c.name;
-      $('lat').value = (Math.round(c.lat * 10000) / 10000);
-      $('lon').value = (Math.round(c.lon * 10000) / 10000);
-      $('tz').value = c.tz;
-      $('tzIana').value = c.iana || '';
+      $('lat' + sfx).value = (Math.round(c.lat * 10000) / 10000);
+      $('lon' + sfx).value = (Math.round(c.lon * 10000) / 10000);
+      $('tz' + sfx).value = c.tz;
+      $('tzIana' + sfx).value = c.iana || '';
       box.classList.add('hidden');
-      recomputeTz();          // уточняем пояс на дату рождения (если зона известна)
+      recomputeTz(sfx);       // уточняем пояс на дату рождения (если зона известна)
       scheduleSnapshot();
     }
     function localMatches(q) {
@@ -391,43 +398,49 @@
     input.addEventListener('keydown', function (e) {
       if (box.classList.contains('hidden')) return;
       var items = box.querySelectorAll('div[data-i]');
-      if (e.key === 'ArrowDown') { sugIndex = Math.min(sugIndex + 1, items.length - 1); e.preventDefault(); }
-      else if (e.key === 'ArrowUp') { sugIndex = Math.max(sugIndex - 1, 0); e.preventDefault(); }
-      else if (e.key === 'Enter' && sugIndex >= 0) { pick(box._list[sugIndex]); e.preventDefault(); return; }
+      if (e.key === 'ArrowDown') { idx = Math.min(idx + 1, items.length - 1); e.preventDefault(); }
+      else if (e.key === 'ArrowUp') { idx = Math.max(idx - 1, 0); e.preventDefault(); }
+      else if (e.key === 'Enter' && idx >= 0) { pick(box._list[idx]); e.preventDefault(); return; }
       else if (e.key === 'Escape') { box.classList.add('hidden'); return; }
-      items.forEach(function (it, i) { it.classList.toggle('active', i === sugIndex); });
+      items.forEach(function (it, i) { it.classList.toggle('active', i === idx); });
     });
     document.addEventListener('click', function (e) {
       if (!e.target.closest('.field-autocomplete')) box.classList.add('hidden');
     });
   }
 
-  /* ---- Валидация данных рождения ----------------------------------------- */
-  function validateBirth() {
+  /* ---- Валидация данных рождения (sfx: '' или '2') ----------------------- */
+  function validateBirth(sfx) {
+    sfx = sfx || '';
     var errs = [];
-    if (!$('dob').value) errs.push('дата рождения');
-    if (!$('tob').value) errs.push('время рождения');
-    if ($('lat').value === '' || isNaN(+$('lat').value)) errs.push('широта');
-    if ($('lon').value === '' || isNaN(+$('lon').value)) errs.push('долгота');
-    if ($('tz').value === '' || isNaN(+$('tz').value)) errs.push('часовой пояс');
-    var el = $('birthError');
+    if (!$('dob' + sfx).value) errs.push('дата рождения');
+    if (!$('tob' + sfx).value) errs.push('время рождения');
+    if ($('lat' + sfx).value === '' || isNaN(+$('lat' + sfx).value)) errs.push('широта');
+    if ($('lon' + sfx).value === '' || isNaN(+$('lon' + sfx).value)) errs.push('долгота');
+    if ($('tz' + sfx).value === '' || isNaN(+$('tz' + sfx).value)) errs.push('часовой пояс');
+    var el = $('birthError' + sfx);
     if (errs.length) { el.textContent = 'Заполните: ' + errs.join(', ') + '.'; return false; }
     el.textContent = '';
     return true;
   }
 
-  /* ---- Расчёт карты из формы --------------------------------------------- */
-  function computeFromForm() {
-    var dob = $('dob').value.split('-');     // YYYY-MM-DD
-    var tob = $('tob').value.split(':');     // HH:MM
+  /* ---- Расчёт карты из формы (sfx: '' или '2') --------------------------- */
+  function computeFromForm(sfx) {
+    sfx = sfx || '';
+    var dob = $('dob' + sfx).value.split('-');     // YYYY-MM-DD
+    var tob = $('tob' + sfx).value.split(':');     // HH:MM
     var input = {
       year: +dob[0], month: +dob[1], day: +dob[2],
       hour: +tob[0], minute: +tob[1],
-      tzOffset: +$('tz').value,
-      lat: +$('lat').value, lon: +$('lon').value
+      tzOffset: +$('tz' + sfx).value,
+      lat: +$('lat' + sfx).value, lon: +$('lon' + sfx).value
     };
-    var raw = window.Eph.computeChart(input);
-    return window.Jyotish.build(raw);
+    return window.Jyotish.build(window.Eph.computeChart(input));
+  }
+  function personName(sfx) {
+    sfx = sfx || '';
+    return (($('firstName' + sfx).value + ' ' + $('lastName' + sfx).value).trim()) ||
+      (sfx ? 'Второй человек' : 'Первый человек');
   }
 
   /* ---- Таблица планет (экран) -------------------------------------------- */
@@ -634,6 +647,83 @@
     return cover + body.join('') + furniture;
   }
 
+  /* ---- Отчёт совместимости (две карты + Гуна Милан) ---------------------- */
+  function buildCompatibilityReport(c1, c2) {
+    var astrologer = esc($('astrologer').value || 'Светлана Кройцер');
+    var rdate = formatRu($('reportDate').value);
+    var n1 = esc(personName('')), n2 = esc(personName('2'));
+    var footline = 'мастер — ' + astrologer + ' — астролог тамильской традиции Наади';
+    var mandala = $('mandala-template').outerHTML
+      .replace('id="mandala-template"', 'class="mandala"').replace('hidden', '');
+
+    var cover =
+      '<div class="page"><div class="page-bar-top"></div>' +
+      '<div class="report-content cover">' +
+        '<div class="cover-title font-jaipur">Гороскоп совместимости</div>' +
+        '<div class="cover-type">Синастрия · Гуна Милан</div>' +
+        '<div class="cover-frame">' + mandala +
+          '<div class="cover-client"><div class="name font-jaipur">' + n1 + '<br>и<br>' + n2 + '</div></div>' +
+        '</div>' +
+        '<div class="cover-meta">' +
+          '<div><span class="lbl">метод:</span> <b>Тамильская астрология Наади</b></div>' +
+          '<div><span class="lbl">система:</span> <b>Нирайна (сидерическая) · Лахири</b></div>' +
+          '<div><span class="lbl">дата составления:</span> <b>' + rdate + '</b></div>' +
+          '<div><span class="lbl">астролог:</span> <b>' + astrologer + '</b></div>' +
+        '</div>' +
+      '</div><div class="page-bar-bottom"><div class="footline">' + footline + '</div></div></div>';
+
+    var gm = window.Interpret.gunaMilan(c1, c2);
+    var body = ['<div class="report-body"><div class="report-content">'];
+    body.push('<div class="r-h1 font-jaipur">Гороскоп совместимости</div><div class="gold-sep"></div>');
+    body.push('<div class="compat-score">' + gm.total + ' / 36 — ' + esc(gm.verdict) + '</div>');
+
+    function personBlock(c, name, sfx) {
+      var dobStr = formatRu($('dob' + sfx).value), tob = esc($('tob' + sfx).value), place = esc($('place' + sfx).value);
+      var moon = null; c.planets.forEach(function (p) { if (p.key === 'moon') moon = p; });
+      return '<div class="r-h2 font-jaipur">' + esc(name) + '</div>' +
+        '<p>' + (dobStr || '') + (tob ? ', ' + tob : '') + (place ? ' · ' + place : '') +
+        '. Лагна: <b>' + c.ascSign + '</b>; Луна: <b>' + moon.sign + '</b>, накшатра <b>' +
+        moon.nakshatra + '</b> (пада ' + moon.pada + ').</p>' +
+        '<div class="chart-wrap">' + window.Jyotish.renderSVG(c, { size: 300 }) + '</div>' +
+        reportTable(c);
+    }
+    body.push(personBlock(c1, personName(''), ''));
+    body.push(personBlock(c2, personName('2'), '2'));
+
+    body.push('<div class="r-h2 font-jaipur">Гуна Милан — Ашта-кута (36 баллов)</div>');
+    var rows = ['<table class="r-table"><tr><th>Кута</th><th>Баллы</th><th>Значение</th></tr>'];
+    gm.items.forEach(function (it) {
+      rows.push('<tr><td><b>' + esc(it.name) + (it.approx ? ' *' : '') + '</b></td><td>' +
+        it.got + ' / ' + it.max + '</td><td>' + esc(it.note) + '</td></tr>');
+    });
+    rows.push('<tr><td><b>Итого</b></td><td><b>' + gm.total + ' / 36</b></td><td><b>' + esc(gm.verdict) + '</b></td></tr></table>');
+    body.push(rows.join(''));
+    body.push('<p style="font-size:12px;color:#8a7a68;">* Йони и Вашья рассчитаны по упрощённым правилам и приведены ориентировочно.</p>');
+
+    if (gm.doshas.length) {
+      body.push('<div class="r-h2 font-jaipur">Важные предостережения (доши)</div>');
+      gm.doshas.forEach(function (d) { body.push('<p class="gem-caution">' + esc(d) + '</p>'); });
+    }
+
+    var notes = window.Interpret.polishNotes($('notes').value);
+    if (notes.length) {
+      body.push('<div class="r-h2 font-jaipur">Комментарий астролога</div>');
+      body.push('<div class="note-block"><div class="src-tag">из заметок специалиста</div>' +
+        notes.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>');
+    }
+    var gImgs = imagesHTML('general');
+    if (gImgs) { body.push('<div class="r-h2 font-jaipur">Приложения</div>'); body.push(gImgs); }
+
+    body.push('<div class="report-footer"><div class="school font-jaipur">Школа астрологии</div>' +
+      '<div class="lines">Тамильская традиция Наади Джйотиш<br>Сидерический зодиак (Нирайна) · Аянамша Лахири</div>' +
+      '<div class="sign">Астролог: <b>' + astrologer + '</b></div></div>');
+    body.push('</div></div>');
+
+    var furniture = '<div class="print-furniture"><div class="pf-top"></div><div class="pf-bottom"></div>' +
+      '<div class="pf-foot">' + footline + '</div></div>';
+    return cover + body.join('') + furniture;
+  }
+
   function reportTable(chart) {
     var rows = ['<table class="r-table"><tr><th>Планета</th><th>Знак</th><th>Дом</th>' +
       '<th>Градус</th><th>Накшатра</th><th>Пада</th><th>Статус</th></tr>'];
@@ -658,21 +748,32 @@
 
   /* ---- Генерация ---------------------------------------------------------- */
   function generate() {
-    if (!validateBirth()) { toast('Проверьте данные рождения'); return; }
-    showOverlay('Рассчитываем карту…');
+    var compat = isCompat();
+    if (compat) {
+      if (!validateBirth('')) { toast('Проверьте данные первого человека'); return; }
+      if (!validateBirth('2')) { toast('Проверьте данные второго человека'); return; }
+    } else {
+      if (!validateBirth('')) { toast('Проверьте данные рождения'); return; }
+    }
+    showOverlay(compat ? 'Рассчитываем карты…' : 'Рассчитываем карту…');
     setTimeout(function () {
       try {
-        var chart = computeFromForm();
-        lastChart = chart;
-        renderPlanetTable(chart);
-        $('chartHolder').innerHTML = window.Jyotish.renderSVG(chart, { size: 360 });
-        $('report-root').innerHTML = buildReport(chart);
+        var c1 = computeFromForm('');
+        lastChart = c1;
+        renderPlanetTable(c1);
+        $('chartHolder').innerHTML = window.Jyotish.renderSVG(c1, { size: 360 });
+        if (compat) {
+          var c2 = computeFromForm('2');
+          $('report-root').innerHTML = buildCompatibilityReport(c1, c2);
+        } else {
+          $('report-root').innerHTML = buildReport(c1);
+        }
         $('calcCard').classList.remove('hidden');
         $('reportActions').classList.remove('hidden');
         $('reportPreview').classList.remove('hidden');
         hideOverlay();
         $('reportActions').scrollIntoView({ behavior: 'smooth' });
-        toast('Отчёт сформирован');
+        toast(compat ? 'Отчёт совместимости сформирован' : 'Отчёт сформирован');
         saveDraft(true);
       } catch (e) {
         hideOverlay();
@@ -680,6 +781,13 @@
         toast('Ошибка расчёта');
       }
     }, 60);
+  }
+
+  // показать/скрыть блок второго человека и подправить заголовок
+  function updateCompatUI() {
+    var compat = isCompat();
+    $('person2Card').classList.toggle('hidden', !compat);
+    $('birthHeading').textContent = compat ? 'Данные рождения — первый человек' : 'Данные рождения';
   }
 
   function showOverlay(msg) { $('overlayMsg').textContent = msg; $('overlay').classList.add('show'); }
@@ -815,7 +923,8 @@
   /* ---- Инициализация ------------------------------------------------------ */
   function init() {
     buildMandala();
-    initPlaceAutocomplete();
+    initPlaceAutocomplete('');
+    initPlaceAutocomplete('2');
     initAttachments();
 
     // дата составления = сегодня (редактируемо)
@@ -847,12 +956,18 @@
       if (el && el.tagName === 'SELECT') el.addEventListener('change', scheduleSnapshot);
     });
 
-    // при изменении даты/времени рождения пересчитываем исторический пояс
-    $('dob').addEventListener('change', recomputeTz);
-    $('tob').addEventListener('change', recomputeTz);
-    // если пользователь правит пояс вручную — убираем авто-зону, чтобы не перетиралось
-    $('tz').addEventListener('input', function () { $('tzIana').value = ''; $('tzNote').textContent = ''; });
-    recomputeTz();   // восстановить подпись после загрузки черновика
+    // при изменении даты/времени рождения пересчитываем исторический пояс (оба человека)
+    ['', '2'].forEach(function (sfx) {
+      $('dob' + sfx).addEventListener('change', function () { recomputeTz(sfx); });
+      $('tob' + sfx).addEventListener('change', function () { recomputeTz(sfx); });
+      // ручная правка пояса убирает авто-зону, чтобы не перетиралось
+      $('tz' + sfx).addEventListener('input', function () { $('tzIana' + sfx).value = ''; $('tzNote' + sfx).textContent = ''; });
+    });
+    // показывать второй блок данных для гороскопа совместимости
+    $('reportType').addEventListener('change', updateCompatUI);
+    updateCompatUI();
+    recomputeTz('');
+    recomputeTz('2');   // восстановить подписи после загрузки черновика
 
     document.addEventListener('keydown', function (e) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
