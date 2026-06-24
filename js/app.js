@@ -698,7 +698,8 @@
     });
     rows.push('<tr><td><b>Итого</b></td><td><b>' + gm.total + ' / 36</b></td><td><b>' + esc(gm.verdict) + '</b></td></tr></table>');
     body.push(rows.join(''));
-    body.push('<p style="font-size:12px;color:#8a7a68;">* Йони и Вашья рассчитаны по упрощённым правилам и приведены ориентировочно.</p>');
+    body.push('<p style="font-size:12px;color:#8a7a68;">Расчёт по классической системе Ашта-кута (8 кут, метод Б. В. Рамана). ' +
+      'В разных традициях отдельные баллы (особенно Йони и Вашья) могут незначительно различаться.</p>');
 
     if (gm.doshas.length) {
       body.push('<div class="r-h2 font-jaipur">Важные предостережения (доши)</div>');

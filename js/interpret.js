@@ -457,7 +457,7 @@
     var NAKLEN = 360 / 27;
     function moon(c) {
       var lon = c.raw.planets.moon;
-      return { nak: Math.floor(lon / NAKLEN) % 27, rashi: Math.floor(lon / 30) % 12 };
+      return { nak: Math.floor(lon / NAKLEN) % 27, rashi: Math.floor(lon / 30) % 12, deg: lon % 30 };
     }
     var a = moon(c1), b = moon(c2);
     var items = [];
@@ -468,9 +468,23 @@
     items.push({ name: 'Варна', got: varna, max: 1,
       note: A.VARNA_NAMES[v1] + ' / ' + A.VARNA_NAMES[v2] + ' — духовная совместимость' });
 
-    // 2. Вашья (2) — упрощённо: одна группа = 2, иначе 1
-    var vashya = (A.RASHI_VASHYA[a.rashi] === A.RASHI_VASHYA[b.rashi]) ? 2 : 1;
-    items.push({ name: 'Вашья', got: vashya, max: 2, approx: true, note: 'взаимное влияние и притяжение' });
+    // 2. Вашья (2) — точные группы (с учётом половин Стрельца/Козерога) + матрица
+    function vashyaGroup(rashi, deg) {
+      switch (rashi) {
+        case 0: case 1: return 0;             // Овен, Телец — четвероногие
+        case 2: case 5: case 6: case 10: return 1; // Близнецы, Дева, Весы, Водолей — человек
+        case 3: case 11: return 2;            // Рак, Рыбы — водные
+        case 4: return 3;                     // Лев — лесной
+        case 7: return 4;                     // Скорпион — насекомое
+        case 8: return deg < 15 ? 1 : 0;      // Стрелец: 0-15 человек, 15-30 четвероногий
+        case 9: return deg < 15 ? 0 : 2;      // Козерог: 0-15 четвероногий, 15-30 водный
+      }
+      return 1;
+    }
+    var g1v = vashyaGroup(a.rashi, a.deg), g2v = vashyaGroup(b.rashi, b.deg);
+    var vashya = A.VASHYA_SCORE[g1v][g2v];
+    items.push({ name: 'Вашья', got: vashya, max: 2,
+      note: A.VASHYA_NAMES[g1v] + ' / ' + A.VASHYA_NAMES[g2v] + ' — взаимное влияние и притяжение' });
 
     // 3. Тара/Дина (3) — счёт накшатр в обе стороны
     function tara(from, to) {
@@ -480,10 +494,10 @@
     var taraScore = tara(a.nak, b.nak) + tara(b.nak, a.nak);
     items.push({ name: 'Тара (Дина)', got: taraScore, max: 3, note: 'здоровье и благополучие' });
 
-    // 4. Йони (4)
+    // 4. Йони (4) — полная классическая матрица 14×14
     var y1 = A.NAK_YONI[a.nak], y2 = A.NAK_YONI[b.nak];
-    var yoni = (y1 === y2) ? 4 : (A.YONI_ENEMY[y1] === y2 ? 0 : 2);
-    items.push({ name: 'Йони', got: yoni, max: 4, approx: true,
+    var yoni = A.YONI_MATRIX[y1][y2];
+    items.push({ name: 'Йони', got: yoni, max: 4,
       note: A.YONI_NAMES[y1] + ' / ' + A.YONI_NAMES[y2] + ' — интимная совместимость' });
 
     // 5. Граха Майтри (5) — дружба управителей раши Луны
